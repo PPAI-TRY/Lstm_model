@@ -10,15 +10,29 @@ import pdb
 ########################################
 ############ Data Preperation ##########
 ########################################
+question = pd.read_csv('data/question.csv')
+question = question['words']
 
+# =============================================================================
+# train = pd.read_csv('data/train.csv')
+# test = pd.read_csv('data/test.csv')
+# train = pd.merge(train,question,left_on=['q1'],right_on=['qid'],how='left')
+# train = pd.merge(train,question,left_on=['q2'],right_on=['qid'],how='left')
+# train = train[['label','words_x','words_y']]
+# train.columns = ['label','q1','q2']
+# train.to_csv('data/train_join.csv')
+#
+# test = pd.merge(test,question,left_on=['q1'],right_on=['qid'],how='left')
+# test = pd.merge(test,question,left_on=['q2'],right_on=['qid'],how='left')
+# test = test[['words_x','words_y']]
+# test.columns = ['q1','q2']
+# test.to_csv('data/test_join.csv')
+# =============================================================================
 
 df = pd.read_csv('data/train_join.csv')
 is_similar = list(df['label'])
 sentences1 = list(df['q1'])
 sentences2 = list(df['q2'])
-
-question = pd.read_csv('data/question.csv')
-question = question['words']
 del df
 
 
