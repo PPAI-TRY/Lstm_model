@@ -1,25 +1,27 @@
 from keras.preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
-from gensim.models import Word2Vec
+#from gensim.models import Word2Vec
 import numpy as np
 import pickle
 import gc
 import pdb
 
-def train_word2vec(documents, embedding_dim):
-    """
-    train word2vector over traning documents
-    Args:
-        documents (list): list of document
-        min_count (int): min count of word in documents to consider for word vector creation
-        embedding_dim (int): outpu wordvector size
-    Returns:
-        word_vectors(dict): dict containing words and their respective vectors
-    """
-    model = Word2Vec(documents, min_count=1, size=embedding_dim)
-    word_vectors = model.wv
-    del model
-    return word_vectors
+from data_util import data_mining_features
+
+#def train_word2vec(documents, embedding_dim):
+#    """
+#    train word2vector over traning documents
+#    Args:
+#        documents (list): list of document
+#        min_count (int): min count of word in documents to consider for word vector creation
+#        embedding_dim (int): outpu wordvector size
+#    Returns:
+#        word_vectors(dict): dict containing words and their respective vectors
+#    """
+#    model = Word2Vec(documents, min_count=1, size=embedding_dim)
+#    word_vectors = model.wv
+#    del model
+#    return word_vectors
 
 
 def create_embedding_matrix(tokenizer, embedding_dim, max_nb_words, word_embed_path):
@@ -51,7 +53,7 @@ def create_embedding_matrix(tokenizer, embedding_dim, max_nb_words, word_embed_p
         embedding_vector = embeddings_index.get(str(word).upper())
         if embedding_vector is not None:
             word_embedding_matrix[i] = embedding_vector
-    return word_embedding_matrix
+    return word_embedding_matrix,embeddings_index
 
 
 def word_embed_meta_data(question, embedding_dim, max_nb_words, word_embed_path):
@@ -66,16 +68,16 @@ def word_embed_meta_data(question, embedding_dim, max_nb_words, word_embed_path)
     """
     tokenizer = Tokenizer()
     tokenizer.fit_on_texts(question)
-    embedding_matrix = create_embedding_matrix(tokenizer, embedding_dim, max_nb_words, word_embed_path)
+    embedding_matrix,embedding_index = create_embedding_matrix(tokenizer, embedding_dim, max_nb_words, word_embed_path)
 #    word_vector = train_word2vec(documents, embedding_dim)
 #    embedding_matrix = create_embedding_matrix(tokenizer, word_vector, embedding_dim)
 #    del word_vector
 #    gc.collect()
-    return tokenizer, embedding_matrix
+    return tokenizer, embedding_matrix,embedding_index
 
 
 
-def create_train_dev_set(tokenizer, sentences_pair, is_similar, max_sequence_length, validation_split_ratio):
+def create_train_dev_set(tokenizer, sentences_pair, is_similar, max_sequence_length, validation_split_ratio,word2vec_dict,tfidf_dict):
     """
     Create training and validation dataset
     Args:
@@ -101,8 +103,10 @@ def create_train_dev_set(tokenizer, sentences_pair, is_similar, max_sequence_len
     sentences2 = [x[1] for x in sentences_pair]
     train_sequences_1 = tokenizer.texts_to_sequences(sentences1)
     train_sequences_2 = tokenizer.texts_to_sequences(sentences2)
-    leaks = [[len(set(x1)), len(set(x2)), len(set(x1).intersection(x2))]
-             for x1, x2 in zip(train_sequences_1, train_sequences_2)]
+    leaks = [data_mining_features(x1,x2,word2vec_dict,tfidf_dict,n_gram=8)
+            for x1, x2 in sentences_pair]
+#    leaks = [[len(set(x1)), len(set(x2)), len(set(x1).intersection(x2))]
+#             for x1, x2 in zip(train_sequences_1, train_sequences_2)]
 
     train_padded_data_1 = pad_sequences(train_sequences_1, maxlen=max_sequence_length)
     train_padded_data_2 = pad_sequences(train_sequences_2, maxlen=max_sequence_length)
@@ -129,7 +133,7 @@ def create_train_dev_set(tokenizer, sentences_pair, is_similar, max_sequence_len
     return train_data_1, train_data_2, labels_train, leaks_train, val_data_1, val_data_2, labels_val, leaks_val
 
 
-def create_test_data(tokenizer, test_sentences_pair, max_sequence_length):
+def create_test_data(tokenizer, test_sentences_pair, max_sequence_length,word2vec_dict,tfidf_dict):
     """
     Create training and validation dataset
     Args:
@@ -146,8 +150,11 @@ def create_test_data(tokenizer, test_sentences_pair, max_sequence_length):
 
     test_sequences_1 = tokenizer.texts_to_sequences(test_sentences1)
     test_sequences_2 = tokenizer.texts_to_sequences(test_sentences2)
-    leaks_test = [[len(set(x1)), len(set(x2)), len(set(x1).intersection(x2))]
-                  for x1, x2 in zip(test_sequences_1, test_sequences_2)]
+    
+    leaks_test = [data_mining_features(x1,x2,word2vec_dict,tfidf_dict,n_gram=8)
+            for x1, x2 in test_sentences_pair]
+#    leaks_test = [[len(set(x1)), len(set(x2)), len(set(x1).intersection(x2))]
+#                  for x1, x2 in zip(test_sequences_1, test_sequences_2)]
 
     leaks_test = np.array(leaks_test)
     test_data_1 = pad_sequences(test_sequences_1, maxlen=max_sequence_length)
